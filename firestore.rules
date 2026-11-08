@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidRecording(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.durationMs is int && data.durationMs >= 0 &&
+             data.filePath is string && data.filePath.size() <= 500 &&
+             data.fileFormat in ['M4A', 'WAV', 'MP3', 'AAC'] &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             data.transcript is string && data.transcript.size() <= 500000 &&
+             (!('speakers' in data) || (data.speakers is string && data.speakers.size() <= 100000)) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 50000)) &&
+             (!('keyPoints' in data) || (data.keyPoints is list && data.keyPoints.size() <= 50 && (data.keyPoints.size() == 0 || data.keyPoints[0] is string))) &&
+             (!('actionItems' in data) || (data.actionItems is list && data.actionItems.size() <= 50 && (data.actionItems.size() == 0 || data.actionItems[0] is string))) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20 && (data.tags.size() == 0 || data.tags[0] is string))) &&
+             (!('isEncrypted' in data) || data.isEncrypted is bool) &&
+             (!('isBackedUp' in data) || data.isBackedUp is bool) &&
+             (!('driveSyncStatus' in data) || data.driveSyncStatus in ['synced', 'pending', 'offline']);
+    }
+
+    function isValidChatMessage(data) {
+      return data.recordingId is string && data.recordingId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.sender in ['user', 'ai'] &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 10000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      match /recordings/{recordingId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'durationMs', 'filePath', 'fileFormat', 'fileSizeBytes', 'transcript', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'durationMs', 'filePath', 'fileFormat', 'fileSizeBytes', 'transcript', 'speakers', 'summary', 'keyPoints', 'actionItems', 'tags', 'isEncrypted', 'isBackedUp', 'driveSyncStatus', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidRecording(incoming());
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidRecording(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'durationMs', 'filePath', 'fileFormat', 'fileSizeBytes', 'transcript', 'speakers', 'summary', 'keyPoints', 'actionItems', 'tags', 'isEncrypted', 'isBackedUp', 'driveSyncStatus', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+
+        match /chatMessages/{messageId} {
+          allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+          allow create: if isSignedIn() &&
+                           request.auth.uid == userId &&
+                           incoming().userId == request.auth.uid &&
+                           incoming().recordingId == recordingId &&
+                           incoming().keys().hasAll(['recordingId', 'userId', 'sender', 'text', 'createdAt']) &&
+                           incoming().keys().hasOnly(['recordingId', 'userId', 'sender', 'text', 'createdAt']) &&
+                           isValidChatMessage(incoming());
+
+          allow update: if false;
+
+          allow delete: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+    }
+  }
+}

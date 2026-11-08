@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "Recording": {
+      "title": "Recording",
+      "description": "Represents an audio recording session with transcripts, tags, and AI insights.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this recording."
+        },
+        "title": {
+          "type": "string",
+          "description": "The display title for the recording."
+        },
+        "durationMs": {
+          "type": "integer",
+          "description": "The duration of the audio recording in milliseconds."
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Local relative storage file path."
+        },
+        "fileFormat": {
+          "type": "string",
+          "description": "Audio format: M4A, WAV, or MP3."
+        },
+        "fileSizeBytes": {
+          "type": "integer",
+          "description": "File size in bytes."
+        },
+        "transcript": {
+          "type": "string",
+          "description": "Full voice transcription of the session."
+        },
+        "speakers": {
+          "type": "string",
+          "description": "Speaker diarization breakdown formatted string or summary."
+        },
+        "summary": {
+          "type": "string",
+          "description": "AI-generated review summary."
+        },
+        "keyPoints": {
+          "type": "array",
+          "description": "List of key takeaway bullet points.",
+          "items": { "type": "string" }
+        },
+        "actionItems": {
+          "type": "array",
+          "description": "List of follow-up action items.",
+          "items": { "type": "string" }
+        },
+        "tags": {
+          "type": "array",
+          "description": "Categorization tags.",
+          "items": { "type": "string" }
+        },
+        "isEncrypted": {
+          "type": "boolean",
+          "description": "Whether the recording content is encrypted."
+        },
+        "isBackedUp": {
+          "type": "boolean",
+          "description": "Whether this recording is synchronized to cloud storage."
+        },
+        "driveSyncStatus": {
+          "type": "string",
+          "description": "Drive cloud backup sync status.",
+          "enum": ["synced", "pending", "offline"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp. Must be FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp. Must be FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "durationMs", "filePath", "fileFormat", "fileSizeBytes", "transcript", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "An interactive AI voice conversation message related to a recording.",
+      "type": "object",
+      "properties": {
+        "recordingId": {
+          "type": "string",
+          "description": "ID of parent recording."
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of author user."
+        },
+        "sender": {
+          "type": "string",
+          "description": "Sender role.",
+          "enum": ["user", "ai"]
+        },
+        "text": {
+          "type": "string",
+          "description": "Message content."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp. Must be FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["recordingId", "userId", "sender", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/recordings/{recordingId}": {
+      "schema": {
+        "$ref": "#/entities/Recording"
+      },
+      "description": "User voice recordings and transcription metadata."
+    },
+    "/users/{userId}/recordings/{recordingId}/chatMessages/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/ChatMessage"
+      },
+      "description": "AI conversation thread messages for the recording."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "VoxFlow",
+  "description": "AI-powered voice recorder with real-time transcription, speaker diarization, auto-tagging, cloud sync, and voice chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
